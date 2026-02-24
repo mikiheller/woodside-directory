@@ -413,6 +413,50 @@ main {
   border-bottom-color: var(--text-secondary);
 }
 
+.phone-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phone-number {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+}
+
+.phone-icons {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.phone-icons a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-light);
+  transition: all 0.12s ease;
+  touch-action: manipulation;
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.phone-icons a:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+.phone-icons a[title="WhatsApp"]:hover {
+  color: #25d366;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
 .address {
   font-size: 0.84rem;
   color: var(--text-secondary);
@@ -839,11 +883,7 @@ mark {
 
   #search-input {
     padding: 10px 36px 10px 40px;
-    font-size: 0.88rem;
-  }
-
-  #search-input::placeholder {
-    font-size: 0.85rem;
+    font-size: 16px;
   }
 
   .grade-filters {

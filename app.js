@@ -183,6 +183,32 @@ function formatPhone(phone) {
   return phone;
 }
 
+function phoneDigits(phone) {
+  return phone.replace(/\D/g, '');
+}
+
+function whatsappUrl(phone) {
+  const d = phoneDigits(phone);
+  const intl = d.length === 10 ? '1' + d : d;
+  return `https://wa.me/${intl}`;
+}
+
+function renderPhoneActions(phone, displayHtml, stopProp) {
+  const d = phoneDigits(phone);
+  const stop = stopProp ? ' onclick="event.stopPropagation()"' : '';
+  const iconCall = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
+  const iconSms = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+  const iconWa = `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.47 1.07 2.89 1.22 3.09.15.2 2.1 3.2 5.08 4.49.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zm-5.42 7.4A9.87 9.87 0 0 1 7 19.93l-.36-.21-3.73.98.99-3.63-.24-.37a9.87 9.87 0 0 1-1.51-5.26c0-5.45 4.44-9.89 9.9-9.89a9.87 9.87 0 0 1 7 2.9 9.86 9.86 0 0 1 2.9 7c0 5.46-4.44 9.9-9.9 9.9zm8.41-18.31A11.82 11.82 0 0 0 12.05.03C5.49.03.13 5.39.13 11.95c0 2.1.55 4.16 1.6 5.98L0 24l6.2-1.63a11.87 11.87 0 0 0 5.85 1.53c6.56 0 11.91-5.35 11.92-11.92a11.83 11.83 0 0 0-3.51-8.41z"/></svg>`;
+  return `<div class="parent-detail phone-actions">
+    <span class="phone-number">${displayHtml}</span>
+    <span class="phone-icons">
+      <a href="tel:${d}" title="Call"${stop}>${iconCall}</a>
+      <a href="sms:${d}" title="Text"${stop}>${iconSms}</a>
+      <a href="${whatsappUrl(phone)}" target="_blank" rel="noopener" title="WhatsApp"${stop}>${iconWa}</a>
+    </span>
+  </div>`;
+}
+
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -200,14 +226,14 @@ function renderCard(family, term) {
     parentsHtml += `<div class="parent-info">`;
     if (family.parent1Name) parentsHtml += `<div class="parent-name">${hl(family.parent1Name)}</div>`;
     if (family.parent1Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(family.parent1Email)}" onclick="event.stopPropagation()">${hl(family.parent1Email)}</a></div>`;
-    if (family.parent1Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent1Phone.replace(/\D/g,'')}" onclick="event.stopPropagation()">${hl(formatPhone(family.parent1Phone))}</a></div>`;
+    if (family.parent1Phone) parentsHtml += renderPhoneActions(family.parent1Phone, hl(formatPhone(family.parent1Phone)), true);
     parentsHtml += `</div>`;
   }
   if (family.parent2Name || family.parent2Email || family.parent2Phone) {
     parentsHtml += `<div class="parent-info">`;
     if (family.parent2Name) parentsHtml += `<div class="parent-name">${hl(family.parent2Name)}</div>`;
     if (family.parent2Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(family.parent2Email)}" onclick="event.stopPropagation()">${hl(family.parent2Email)}</a></div>`;
-    if (family.parent2Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent2Phone.replace(/\D/g,'')}" onclick="event.stopPropagation()">${hl(formatPhone(family.parent2Phone))}</a></div>`;
+    if (family.parent2Phone) parentsHtml += renderPhoneActions(family.parent2Phone, hl(formatPhone(family.parent2Phone)), true);
     parentsHtml += `</div>`;
   }
 
@@ -348,14 +374,14 @@ function openFamilyModal(familyKey) {
     parentsHtml += '<div class="modal-parent">';
     if (rep.parent1Name) parentsHtml += `<div class="parent-name">${escapeHtml(rep.parent1Name)}</div>`;
     if (rep.parent1Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(rep.parent1Email)}">${escapeHtml(rep.parent1Email)}</a></div>`;
-    if (rep.parent1Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${rep.parent1Phone.replace(/\D/g,'')}">${formatPhone(rep.parent1Phone)}</a></div>`;
+    if (rep.parent1Phone) parentsHtml += renderPhoneActions(rep.parent1Phone, formatPhone(rep.parent1Phone), false);
     parentsHtml += '</div>';
   }
   if (rep.parent2Name || rep.parent2Email || rep.parent2Phone) {
     parentsHtml += '<div class="modal-parent">';
     if (rep.parent2Name) parentsHtml += `<div class="parent-name">${escapeHtml(rep.parent2Name)}</div>`;
     if (rep.parent2Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(rep.parent2Email)}">${escapeHtml(rep.parent2Email)}</a></div>`;
-    if (rep.parent2Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${rep.parent2Phone.replace(/\D/g,'')}">${formatPhone(rep.parent2Phone)}</a></div>`;
+    if (rep.parent2Phone) parentsHtml += renderPhoneActions(rep.parent2Phone, formatPhone(rep.parent2Phone), false);
     parentsHtml += '</div>';
   }
 
