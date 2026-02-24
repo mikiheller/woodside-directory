@@ -1,7 +1,8 @@
 const SHEET_ID = '1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg';
 
 let allFamilies = [];
-let activeGrade = 'all';
+let familyGroups = {};
+let activeGrades = new Set();
 let currentView = 'cards';
 let searchTerm = '';
 
@@ -12,6 +13,10 @@ const searchInput = document.getElementById('search-input');
 const clearBtn = document.getElementById('clear-search');
 const gradeFilters = document.getElementById('grade-filters');
 const resultsInfo = document.getElementById('results-info');
+const resetBtn = document.getElementById('reset-btn');
+const copyEmailsBtn = document.getElementById('copy-emails-btn');
+const modal = document.getElementById('family-modal');
+const modalBackdrop = document.getElementById('modal-backdrop');
 
 async function fetchSheet() {
   const urls = [
@@ -65,24 +70,19 @@ function parseCSV(text) {
   return rows.filter(r => r !== undefined && r.some(cell => cell !== ''));
 }
 
-function findAllNameColumns(h) {
-  const firstIdx = h.findIndex(col => col === 'firstname' || col === 'first');
-  const lastIdx = h.findIndex(col => col === 'lastname' || col === 'last');
-  return { first: firstIdx, last: lastIdx };
-}
-
 function detectColumns(headers) {
   const h = headers.map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ''));
-
   const find = (...keywords) => h.findIndex(col => keywords.some(k => col.includes(k)));
   const findExcluding = (exclude, ...keywords) =>
     h.findIndex(col => keywords.some(k => col.includes(k)) && !exclude.some(e => col.includes(e)));
 
-  const nameFields = findAllNameColumns(h);
+  const firstIdx = h.findIndex(col => col === 'firstname' || col === 'first');
+  const lastIdx = h.findIndex(col => col === 'lastname' || col === 'last');
 
   return {
-    studentFirst: nameFields.first !== -1 ? nameFields.first : find('studentfirst', 'childfirst', 'kidfirst', 'firstname'),
-    studentLast: nameFields.last !== -1 ? nameFields.last : findExcluding(['id'], 'studentlast', 'childlast', 'kidlast', 'lastname', 'last'),
+    familyId: find('familyid', 'family_id'),
+    studentFirst: firstIdx !== -1 ? firstIdx : find('studentfirst', 'childfirst', 'kidfirst', 'firstname'),
+    studentLast: lastIdx !== -1 ? lastIdx : findExcluding(['id'], 'studentlast', 'childlast', 'kidlast', 'lastname', 'last'),
     grade: find('grade', 'class'),
     parent1Name: find('parent1name', 'parent1n', 'mothername'),
     parent1Email: find('parent1email', 'parent1e'),
@@ -100,6 +100,7 @@ function buildFamilies(rows, cols) {
   return dataRows.map(row => {
     const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '';
     return {
+      familyId: get(cols.familyId),
       studentFirst: get(cols.studentFirst),
       studentLast: get(cols.studentLast),
       grade: get(cols.grade),
@@ -111,9 +112,18 @@ function buildFamilies(rows, cols) {
       parent2Phone: get(cols.parent2Phone),
       address: get(cols.address),
       _raw: row,
-      _headers: cols.headers
     };
   }).filter(f => f.studentFirst || f.studentLast);
+}
+
+function buildFamilyGroups(families) {
+  const groups = {};
+  families.forEach(f => {
+    const key = f.familyId || `${f.parent1Name}_${f.studentLast}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(f);
+  });
+  return groups;
 }
 
 function gradeOrder(g) {
@@ -173,23 +183,31 @@ function formatPhone(phone) {
   return phone;
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function renderCard(family, term) {
   const hl = (t) => highlightText(t, term);
   const fullName = `${family.studentFirst} ${family.studentLast}`.trim();
+  const familyKey = family.familyId || `${family.parent1Name}_${family.studentLast}`;
+  const siblings = familyGroups[familyKey] || [];
+  const siblingCount = siblings.length;
 
   let parentsHtml = '';
   if (family.parent1Name || family.parent1Email || family.parent1Phone) {
     parentsHtml += `<div class="parent-info">`;
     if (family.parent1Name) parentsHtml += `<div class="parent-name">${hl(family.parent1Name)}</div>`;
-    if (family.parent1Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${family.parent1Email}">${hl(family.parent1Email)}</a></div>`;
-    if (family.parent1Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent1Phone.replace(/\D/g,'')}">${hl(formatPhone(family.parent1Phone))}</a></div>`;
+    if (family.parent1Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(family.parent1Email)}" onclick="event.stopPropagation()">${hl(family.parent1Email)}</a></div>`;
+    if (family.parent1Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent1Phone.replace(/\D/g,'')}" onclick="event.stopPropagation()">${hl(formatPhone(family.parent1Phone))}</a></div>`;
     parentsHtml += `</div>`;
   }
   if (family.parent2Name || family.parent2Email || family.parent2Phone) {
     parentsHtml += `<div class="parent-info">`;
     if (family.parent2Name) parentsHtml += `<div class="parent-name">${hl(family.parent2Name)}</div>`;
-    if (family.parent2Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${family.parent2Email}">${hl(family.parent2Email)}</a></div>`;
-    if (family.parent2Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent2Phone.replace(/\D/g,'')}">${hl(formatPhone(family.parent2Phone))}</a></div>`;
+    if (family.parent2Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(family.parent2Email)}" onclick="event.stopPropagation()">${hl(family.parent2Email)}</a></div>`;
+    if (family.parent2Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${family.parent2Phone.replace(/\D/g,'')}" onclick="event.stopPropagation()">${hl(formatPhone(family.parent2Phone))}</a></div>`;
     parentsHtml += `</div>`;
   }
 
@@ -201,15 +219,22 @@ function renderCard(family, term) {
         <div class="card-section-label">Address</div>
         <div class="address">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <a href="${mapsUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${hl(family.address)}</a>
+          <a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none">${hl(family.address)}</a>
         </div>
       </div>`;
   }
 
+  const siblingHint = siblingCount > 1
+    ? `<span class="sibling-count" title="${siblingCount} kids in family">${siblingCount} kids</span>`
+    : '';
+
   return `
-    <div class="family-card">
+    <div class="family-card" data-family-key="${escapeHtml(familyKey)}" role="button" tabindex="0">
       <div class="card-header">
-        <span class="student-name">${hl(fullName)}</span>
+        <div class="card-header-left">
+          <span class="student-name">${hl(fullName)}</span>
+          ${siblingHint}
+        </div>
         ${family.grade ? `<span class="grade-badge">${hl(family.grade)}</span>` : ''}
       </div>
       ${parentsHtml ? `<div class="card-section"><div class="card-section-label">Parents</div>${parentsHtml}</div>` : ''}
@@ -217,20 +242,51 @@ function renderCard(family, term) {
     </div>`;
 }
 
-function render() {
+function renderTable(filtered) {
+  let html = '<table class="directory-table"><thead><tr>';
+  html += '<th>Student</th><th>Grade</th><th>Parent 1</th><th>Parent 1 Email</th><th>Parent 1 Phone</th>';
+  html += '<th>Parent 2</th><th>Parent 2 Email</th><th>Parent 2 Phone</th><th>Address</th>';
+  html += '</tr></thead><tbody>';
+
+  filtered.forEach(f => {
+    const fullName = `${f.studentFirst} ${f.studentLast}`.trim();
+    html += `<tr data-family-key="${escapeHtml(f.familyId || `${f.parent1Name}_${f.studentLast}`)}" role="button">`;
+    html += `<td>${escapeHtml(fullName)}</td>`;
+    html += `<td>${escapeHtml(f.grade)}</td>`;
+    html += `<td>${escapeHtml(f.parent1Name)}</td>`;
+    html += `<td>${escapeHtml(f.parent1Email)}</td>`;
+    html += `<td>${escapeHtml(formatPhone(f.parent1Phone))}</td>`;
+    html += `<td>${escapeHtml(f.parent2Name)}</td>`;
+    html += `<td>${escapeHtml(f.parent2Email)}</td>`;
+    html += `<td>${escapeHtml(formatPhone(f.parent2Phone))}</td>`;
+    html += `<td>${escapeHtml(f.address)}</td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  return html;
+}
+
+function getFiltered() {
   let filtered = allFamilies;
-
-  if (activeGrade !== 'all') {
-    filtered = filtered.filter(f => f.grade === activeGrade);
+  if (activeGrades.size > 0) {
+    filtered = filtered.filter(f => activeGrades.has(f.grade));
   }
-
   if (searchTerm) {
     filtered = filtered.filter(f => matchesSearch(f, searchTerm));
   }
+  return filtered;
+}
 
-  const gradeGrouping = activeGrade === 'all' && !searchTerm;
+function render() {
+  const filtered = getFiltered();
+  const showGradeGroups = activeGrades.size === 0 && !searchTerm && currentView === 'cards';
 
-  if (gradeGrouping) {
+  if (currentView === 'table') {
+    filtered.sort((a, b) => gradeOrder(a.grade || 'ZZZ') - gradeOrder(b.grade || 'ZZZ') || (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
+    directoryEl.innerHTML = renderTable(filtered);
+    directoryEl.className = 'directory table-view';
+  } else if (showGradeGroups) {
     const grades = getGrades(filtered);
     let html = '';
     grades.forEach(grade => {
@@ -239,27 +295,31 @@ function render() {
       html += `<div class="grade-group-header">${grade} <span class="count">${inGrade.length} student${inGrade.length !== 1 ? 's' : ''}</span></div>`;
       html += inGrade.map(f => renderCard(f, searchTerm)).join('');
     });
-
     const noGrade = filtered.filter(f => !f.grade);
     if (noGrade.length) {
       noGrade.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || ''));
       html += `<div class="grade-group-header">No Grade Listed <span class="count">${noGrade.length}</span></div>`;
       html += noGrade.map(f => renderCard(f, searchTerm)).join('');
     }
-
     directoryEl.innerHTML = html;
+    directoryEl.className = 'directory cards-view';
   } else {
     filtered.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
     directoryEl.innerHTML = filtered.map(f => renderCard(f, searchTerm)).join('');
+    directoryEl.className = 'directory cards-view';
   }
 
   const total = allFamilies.length;
   const shown = filtered.length;
-  if (searchTerm || activeGrade !== 'all') {
+  if (searchTerm || activeGrades.size > 0) {
     resultsInfo.textContent = `Showing ${shown} of ${total} students`;
   } else {
     resultsInfo.textContent = `${total} students`;
   }
+
+  const hasActiveFilters = searchTerm || activeGrades.size > 0;
+  resetBtn.classList.toggle('hidden', !hasActiveFilters);
+  copyEmailsBtn.classList.toggle('hidden', filtered.length === 0);
 
   if (filtered.length === 0) {
     directoryEl.innerHTML = `
@@ -269,6 +329,76 @@ function render() {
       </div>`;
   }
 }
+
+// --- Family Modal ---
+
+function openFamilyModal(familyKey) {
+  const siblings = familyGroups[familyKey];
+  if (!siblings || !siblings.length) return;
+
+  const rep = siblings[0];
+  const lastName = rep.studentLast;
+
+  let kidsHtml = siblings.map(s =>
+    `<div class="modal-kid"><span class="modal-kid-name">${escapeHtml(s.studentFirst)} ${escapeHtml(s.studentLast)}</span><span class="grade-badge">${escapeHtml(s.grade)}</span></div>`
+  ).join('');
+
+  let parentsHtml = '';
+  if (rep.parent1Name || rep.parent1Email || rep.parent1Phone) {
+    parentsHtml += '<div class="modal-parent">';
+    if (rep.parent1Name) parentsHtml += `<div class="parent-name">${escapeHtml(rep.parent1Name)}</div>`;
+    if (rep.parent1Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(rep.parent1Email)}">${escapeHtml(rep.parent1Email)}</a></div>`;
+    if (rep.parent1Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${rep.parent1Phone.replace(/\D/g,'')}">${formatPhone(rep.parent1Phone)}</a></div>`;
+    parentsHtml += '</div>';
+  }
+  if (rep.parent2Name || rep.parent2Email || rep.parent2Phone) {
+    parentsHtml += '<div class="modal-parent">';
+    if (rep.parent2Name) parentsHtml += `<div class="parent-name">${escapeHtml(rep.parent2Name)}</div>`;
+    if (rep.parent2Email) parentsHtml += `<div class="parent-detail"><a href="mailto:${escapeHtml(rep.parent2Email)}">${escapeHtml(rep.parent2Email)}</a></div>`;
+    if (rep.parent2Phone) parentsHtml += `<div class="parent-detail"><a href="tel:${rep.parent2Phone.replace(/\D/g,'')}">${formatPhone(rep.parent2Phone)}</a></div>`;
+    parentsHtml += '</div>';
+  }
+
+  let addressHtml = '';
+  if (rep.address) {
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rep.address)}`;
+    addressHtml = `
+      <div class="modal-section">
+        <div class="modal-section-label">Address</div>
+        <div class="address">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <a href="${mapsUrl}" target="_blank" rel="noopener">${escapeHtml(rep.address)}</a>
+        </div>
+      </div>`;
+  }
+
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h2>${escapeHtml(lastName)} Family</h2>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Kids</div>
+      <div class="modal-kids">${kidsHtml}</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Parents</div>
+      ${parentsHtml}
+    </div>
+    ${addressHtml}
+  `;
+
+  modal.classList.add('open');
+  modalBackdrop.classList.add('open');
+  document.getElementById('modal-close').focus();
+}
+
+function closeModal() {
+  modal.classList.remove('open');
+  modalBackdrop.classList.remove('open');
+}
+
+// --- Event Listeners ---
 
 searchInput.addEventListener('input', () => {
   searchTerm = searchInput.value.trim();
@@ -287,10 +417,55 @@ clearBtn.addEventListener('click', () => {
 gradeFilters.addEventListener('click', (e) => {
   const btn = e.target.closest('.grade-btn');
   if (!btn) return;
-  gradeFilters.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeGrade = btn.dataset.grade;
+  const grade = btn.dataset.grade;
+
+  if (grade === 'all') {
+    activeGrades.clear();
+    gradeFilters.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    const allBtn = gradeFilters.querySelector('[data-grade="all"]');
+    allBtn.classList.remove('active');
+
+    if (activeGrades.has(grade)) {
+      activeGrades.delete(grade);
+      btn.classList.remove('active');
+      if (activeGrades.size === 0) allBtn.classList.add('active');
+    } else {
+      activeGrades.add(grade);
+      btn.classList.add('active');
+    }
+  }
   render();
+});
+
+resetBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  searchTerm = '';
+  clearBtn.classList.remove('visible');
+  activeGrades.clear();
+  gradeFilters.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+  gradeFilters.querySelector('[data-grade="all"]').classList.add('active');
+  render();
+});
+
+copyEmailsBtn.addEventListener('click', () => {
+  const filtered = getFiltered();
+  const emails = new Set();
+  filtered.forEach(f => {
+    if (f.parent1Email) emails.add(f.parent1Email);
+    if (f.parent2Email) emails.add(f.parent2Email);
+  });
+  const text = [...emails].sort().join(', ');
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = copyEmailsBtn.textContent;
+    copyEmailsBtn.textContent = `Copied ${emails.size} emails!`;
+    copyEmailsBtn.classList.add('copied');
+    setTimeout(() => {
+      copyEmailsBtn.textContent = orig;
+      copyEmailsBtn.classList.remove('copied');
+    }, 2000);
+  });
 });
 
 document.querySelector('.view-toggle').addEventListener('click', (e) => {
@@ -299,16 +474,43 @@ document.querySelector('.view-toggle').addEventListener('click', (e) => {
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   currentView = btn.dataset.view;
-  directoryEl.className = `directory ${currentView === 'cards' ? 'cards-view' : 'list-view'}`;
+  render();
+});
+
+directoryEl.addEventListener('click', (e) => {
+  const card = e.target.closest('.family-card, tr[data-family-key]');
+  if (!card) return;
+  if (e.target.closest('a')) return;
+  const key = card.dataset.familyKey;
+  if (key) openFamilyModal(key);
+});
+
+directoryEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const card = e.target.closest('.family-card');
+    if (card) {
+      const key = card.dataset.familyKey;
+      if (key) openFamilyModal(key);
+    }
+  }
+});
+
+modalBackdrop.addEventListener('click', closeModal);
+modal.addEventListener('click', (e) => {
+  if (e.target.closest('.modal-close')) closeModal();
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === '/' && document.activeElement !== searchInput) {
+  if (e.key === '/' && document.activeElement !== searchInput && !modal.classList.contains('open')) {
     e.preventDefault();
     searchInput.focus();
   }
-  if (e.key === 'Escape' && document.activeElement === searchInput) {
-    searchInput.blur();
+  if (e.key === 'Escape') {
+    if (modal.classList.contains('open')) {
+      closeModal();
+    } else if (document.activeElement === searchInput) {
+      searchInput.blur();
+    }
   }
 });
 
@@ -320,6 +522,7 @@ async function init() {
 
     const cols = detectColumns(rows[0]);
     allFamilies = buildFamilies(rows, cols);
+    familyGroups = buildFamilyGroups(allFamilies);
 
     const grades = getGrades(allFamilies);
     renderGradeButtons(grades);
