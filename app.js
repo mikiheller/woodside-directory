@@ -1,5 +1,4 @@
 const SHEET_ID = '1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg';
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
 let allFamilies = [];
 let activeGrade = 'all';
@@ -15,9 +14,17 @@ const gradeFilters = document.getElementById('grade-filters');
 const resultsInfo = document.getElementById('results-info');
 
 async function fetchSheet() {
-  const response = await fetch(CSV_URL);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.text();
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`,
+  ];
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response.text();
+    } catch (_) { /* try next */ }
+  }
+  throw new Error('Could not fetch sheet — is it shared publicly?');
 }
 
 function parseCSV(text) {
@@ -58,21 +65,32 @@ function parseCSV(text) {
   return rows.filter(r => r !== undefined && r.some(cell => cell !== ''));
 }
 
+function findAllNameColumns(h) {
+  const firstIdx = h.findIndex(col => col === 'firstname' || col === 'first');
+  const lastIdx = h.findIndex(col => col === 'lastname' || col === 'last');
+  return { first: firstIdx, last: lastIdx };
+}
+
 function detectColumns(headers) {
   const h = headers.map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
   const find = (...keywords) => h.findIndex(col => keywords.some(k => col.includes(k)));
+  const findExcluding = (exclude, ...keywords) =>
+    h.findIndex(col => keywords.some(k => col.includes(k)) && !exclude.some(e => col.includes(e)));
+
+  const nameFields = findAllNameColumns(h);
 
   return {
-    studentFirst: find('studentfirst', 'childfirst', 'kidfirst', 'firstname', 'first'),
-    studentLast: find('studentlast', 'childlast', 'kidlast', 'lastname', 'last', 'family'),
-    grade: find('grade', 'class', 'year'),
-    parent1Name: find('parent1', 'mother', 'mom', 'guardian1'),
-    parent1Email: (() => { const idx = h.findIndex((col, i) => (col.includes('email') || col.includes('mail')) && i < h.length / 2); return idx; })(),
-    parent1Phone: (() => { const idx = h.findIndex((col, i) => (col.includes('phone') || col.includes('cell') || col.includes('mobile')) && i < h.length / 2); return idx; })(),
-    parent2Name: (() => { const idx = h.findIndex((col, i) => col.includes('parent2') || col.includes('father') || col.includes('dad') || col.includes('guardian2')); return idx; })(),
-    parent2Email: (() => { const idxes = h.reduce((acc, col, i) => { if (col.includes('email') || col.includes('mail')) acc.push(i); return acc; }, []); return idxes.length > 1 ? idxes[1] : -1; })(),
-    parent2Phone: (() => { const idxes = h.reduce((acc, col, i) => { if (col.includes('phone') || col.includes('cell') || col.includes('mobile')) acc.push(i); return acc; }, []); return idxes.length > 1 ? idxes[1] : -1; })(),
-    address: find('address', 'street', 'home'),
+    studentFirst: nameFields.first !== -1 ? nameFields.first : find('studentfirst', 'childfirst', 'kidfirst', 'firstname'),
+    studentLast: nameFields.last !== -1 ? nameFields.last : findExcluding(['id'], 'studentlast', 'childlast', 'kidlast', 'lastname', 'last'),
+    grade: find('grade', 'class'),
+    parent1Name: find('parent1name', 'parent1n', 'mothername'),
+    parent1Email: find('parent1email', 'parent1e'),
+    parent1Phone: find('parent1phone', 'parent1p', 'parent1cell'),
+    parent2Name: find('parent2name', 'parent2n', 'fathername'),
+    parent2Email: find('parent2email', 'parent2e'),
+    parent2Phone: find('parent2phone', 'parent2p', 'parent2cell'),
+    address: find('address', 'street'),
     headers
   };
 }
@@ -98,20 +116,20 @@ function buildFamilies(rows, cols) {
   }).filter(f => f.studentFirst || f.studentLast);
 }
 
+function gradeOrder(g) {
+  const s = g.toUpperCase();
+  if (s.startsWith('PS'))  return 0  + (s.charCodeAt(2) || 0) / 1000;
+  if (s.startsWith('PK'))  return 10 + (s.charCodeAt(2) || 0) / 1000;
+  if (s.startsWith('TK'))  return 20 + (s.charCodeAt(2) || 0) / 1000;
+  if (s.startsWith('K'))   return 30 + (s.charCodeAt(1) || 0) / 1000;
+  const num = parseInt(s);
+  if (!isNaN(num))         return 40 + num + (s.charCodeAt(s.length - 1) || 0) / 1000;
+  return 100;
+}
+
 function getGrades(families) {
   const grades = [...new Set(families.map(f => f.grade).filter(Boolean))];
-  return grades.sort((a, b) => {
-    const numA = parseInt(a);
-    const numB = parseInt(b);
-    const isNumA = !isNaN(numA);
-    const isNumB = !isNaN(numB);
-    if (a.toLowerCase().includes('k') && !b.toLowerCase().includes('k')) return -1;
-    if (!a.toLowerCase().includes('k') && b.toLowerCase().includes('k')) return 1;
-    if (a.toLowerCase().includes('pre') && !b.toLowerCase().includes('pre')) return -1;
-    if (!a.toLowerCase().includes('pre') && b.toLowerCase().includes('pre')) return 1;
-    if (isNumA && isNumB) return numA - numB;
-    return a.localeCompare(b);
-  });
+  return grades.sort((a, b) => gradeOrder(a) - gradeOrder(b));
 }
 
 function renderGradeButtons(grades) {
