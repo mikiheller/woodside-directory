@@ -5,19 +5,19 @@
 }
 
 :root {
-  --bg: #f5f4f1;
+  --bg: #f4f6f5;
   --surface: #ffffff;
-  --surface-hover: #fafaf8;
-  --border: #e8e6e1;
-  --border-light: #f0eee9;
-  --text-primary: #1a1a1e;
-  --text-secondary: #5c5c66;
-  --text-tertiary: #8e8e99;
-  --accent: #7c6f58;
-  --accent-light: #f0ece4;
-  --accent-hover: #6b5f4a;
-  --header-bg: #1a1a1e;
-  --header-text: #f5f4f1;
+  --surface-hover: #f9faf9;
+  --border: #e0e5e2;
+  --border-light: #edf0ee;
+  --text-primary: #1a1f1c;
+  --text-secondary: #4a5650;
+  --text-tertiary: #7f8b84;
+  --accent: #2a7d68;
+  --accent-light: #e8f4f0;
+  --accent-hover: #1f6652;
+  --header-bg: #1b3329;
+  --header-text: #f0f4f2;
   --radius: 8px;
   --radius-lg: 12px;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -204,9 +204,9 @@ main {
 }
 
 .grade-btn.active {
-  background: var(--text-primary);
+  background: var(--header-bg);
   color: white;
-  border-color: var(--text-primary);
+  border-color: var(--header-bg);
 }
 
 .controls-right {
@@ -275,7 +275,7 @@ main {
 }
 
 .view-btn.active {
-  background: var(--text-primary);
+  background: var(--header-bg);
   color: white;
 }
 
@@ -303,10 +303,19 @@ main {
   background: var(--surface);
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  padding: 18px 20px;
+  border-left: 3px solid var(--border);
+  padding: 18px 20px 18px 18px;
   transition: all 0.12s ease;
   cursor: pointer;
 }
+
+.family-card.band-ps  { border-left-color: #db2777; }
+.family-card.band-tk  { border-left-color: #d97706; }
+.family-card.band-k   { border-left-color: #65a30d; }
+.family-card.band-1   { border-left-color: #0284c7; }
+.family-card.band-3   { border-left-color: #7c3aed; }
+.family-card.band-5   { border-left-color: #2a7d68; }
+.family-card.band-6   { border-left-color: #dc2626; }
 
 .family-card:hover {
   box-shadow: var(--shadow-md);
@@ -363,6 +372,14 @@ main {
   margin-left: 12px;
   letter-spacing: 0.02em;
 }
+
+.grade-badge.grade-ps, .grade-badge.grade-pk { background: #fdf2f8; color: #9d174d; }
+.grade-badge.grade-tk { background: #fef3c7; color: #92400e; }
+.grade-badge.grade-k  { background: #ecfccb; color: #3f6212; }
+.grade-badge.grade-1, .grade-badge.grade-2 { background: #e0f2fe; color: #0369a1; }
+.grade-badge.grade-3, .grade-badge.grade-4 { background: #ede9fe; color: #6d28d9; }
+.grade-badge.grade-5  { background: #e8f4f0; color: #2a7d68; }
+.grade-badge.grade-6, .grade-badge.grade-7, .grade-badge.grade-8 { background: #fee2e2; color: #b91c1c; }
 
 .card-section {
   margin-top: 10px;
@@ -492,12 +509,20 @@ main {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   margin-bottom: 4px;
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
+
+.grade-group-header.band-ps  { border-bottom-color: #db2777; }
+.grade-group-header.band-tk  { border-bottom-color: #d97706; }
+.grade-group-header.band-k   { border-bottom-color: #65a30d; }
+.grade-group-header.band-1   { border-bottom-color: #0284c7; }
+.grade-group-header.band-3   { border-bottom-color: #7c3aed; }
+.grade-group-header.band-5   { border-bottom-color: #2a7d68; }
+.grade-group-header.band-6   { border-bottom-color: #dc2626; }
 
 .grade-group-header .count {
   font-family: var(--font-sans);
