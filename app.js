@@ -188,39 +188,6 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function gradeBandClass(grade) {
-  if (!grade) return '';
-  const g = grade.toUpperCase();
-  if (g.startsWith('PS') || g.startsWith('PK')) return 'grade-ps';
-  if (g.startsWith('TK')) return 'grade-tk';
-  if (g.startsWith('K'))  return 'grade-k';
-  const num = parseInt(g);
-  if (num >= 1 && num <= 2) return `grade-${num}`;
-  if (num >= 3 && num <= 4) return `grade-${num}`;
-  if (num === 5) return 'grade-5';
-  if (num >= 6) return `grade-${num}`;
-  if (g.startsWith('1')) return 'grade-1';
-  if (g.startsWith('2')) return 'grade-2';
-  if (g.startsWith('3')) return 'grade-3';
-  if (g.startsWith('4')) return 'grade-4';
-  if (g.startsWith('5')) return 'grade-5';
-  return '';
-}
-
-function cardBandClass(grade) {
-  if (!grade) return '';
-  const g = grade.toUpperCase();
-  if (g.startsWith('PS') || g.startsWith('PK')) return 'band-ps';
-  if (g.startsWith('TK')) return 'band-tk';
-  if (g.startsWith('K'))  return 'band-k';
-  const num = parseInt(g);
-  if (num >= 1 && num <= 2) return 'band-1';
-  if (num >= 3 && num <= 4) return 'band-3';
-  if (num === 5) return 'band-5';
-  if (num >= 6) return 'band-6';
-  return '';
-}
-
 function renderCard(family, term) {
   const hl = (t) => highlightText(t, term);
   const fullName = `${family.studentFirst} ${family.studentLast}`.trim();
@@ -262,13 +229,13 @@ function renderCard(family, term) {
     : '';
 
   return `
-    <div class="family-card ${cardBandClass(family.grade)}" data-family-key="${escapeHtml(familyKey)}" role="button" tabindex="0">
+    <div class="family-card" data-family-key="${escapeHtml(familyKey)}" role="button" tabindex="0">
       <div class="card-header">
         <div class="card-header-left">
           <span class="student-name">${hl(fullName)}</span>
           ${siblingHint}
         </div>
-        ${family.grade ? `<span class="grade-badge ${gradeBandClass(family.grade)}">${hl(family.grade)}</span>` : ''}
+        ${family.grade ? `<span class="grade-badge">${hl(family.grade)}</span>` : ''}
       </div>
       ${parentsHtml ? `<div class="card-section"><div class="card-section-label">Parents</div>${parentsHtml}</div>` : ''}
       ${addressHtml}
@@ -325,7 +292,7 @@ function render() {
     grades.forEach(grade => {
       const inGrade = filtered.filter(f => f.grade === grade);
       inGrade.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
-      html += `<div class="grade-group-header ${cardBandClass(grade)}">${grade} <span class="count">${inGrade.length} student${inGrade.length !== 1 ? 's' : ''}</span></div>`;
+      html += `<div class="grade-group-header">${grade} <span class="count">${inGrade.length} student${inGrade.length !== 1 ? 's' : ''}</span></div>`;
       html += inGrade.map(f => renderCard(f, searchTerm)).join('');
     });
     const noGrade = filtered.filter(f => !f.grade);
@@ -373,7 +340,7 @@ function openFamilyModal(familyKey) {
   const lastName = rep.studentLast;
 
   let kidsHtml = siblings.map(s =>
-    `<div class="modal-kid"><span class="modal-kid-name">${escapeHtml(s.studentFirst)} ${escapeHtml(s.studentLast)}</span><span class="grade-badge ${gradeBandClass(s.grade)}">${escapeHtml(s.grade)}</span></div>`
+    `<div class="modal-kid"><span class="modal-kid-name">${escapeHtml(s.studentFirst)} ${escapeHtml(s.studentLast)}</span><span class="grade-badge">${escapeHtml(s.grade)}</span></div>`
   ).join('');
 
   let parentsHtml = '';
