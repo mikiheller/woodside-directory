@@ -809,27 +809,11 @@ mark {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    overflow: hidden;
-  }
-
-  .grade-filters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-    min-width: 0;
-    max-width: calc(100vw - 32px);
-  }
-
-  .grade-filters::-webkit-scrollbar {
-    display: none;
   }
 
   .grade-btn {
-    padding: 8px 14px;
+    padding: 8px 12px;
     font-size: 0.82rem;
-    flex-shrink: 0;
   }
 
   .controls-right {
@@ -888,7 +872,6 @@ mark {
 
   .grade-filters {
     gap: 6px;
-    max-width: calc(100vw - 24px);
   }
 
   .grade-btn {
