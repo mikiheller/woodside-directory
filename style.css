@@ -819,6 +819,7 @@ mark {
     scrollbar-width: none;
     padding-bottom: 4px;
     min-width: 0;
+    max-width: calc(100vw - 32px);
   }
 
   .grade-filters::-webkit-scrollbar {
@@ -887,6 +888,7 @@ mark {
 
   .grade-filters {
     gap: 6px;
+    max-width: calc(100vw - 24px);
   }
 
   .grade-btn {
