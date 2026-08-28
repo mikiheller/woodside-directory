@@ -1,4 +1,17 @@
-const SHEET_ID = '1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg';
+const SCHOOLS = {
+  woodside: {
+    title: 'Woodside Directory',
+    sheetId: '1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg',
+    sheetUrl: 'https://docs.google.com/spreadsheets/d/1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg/edit?usp=sharing',
+  },
+  alpha: {
+    title: 'Alpha Directory',
+    sheetId: '1NmcsZ2GYKNzC9eO1tLe76GsrM7e5iPZTH2Hba6v1Ntk',
+    sheetUrl: 'https://docs.google.com/spreadsheets/d/1NmcsZ2GYKNzC9eO1tLe76GsrM7e5iPZTH2Hba6v1Ntk/edit?usp=sharing',
+  },
+};
+
+let currentSchool = localStorage.getItem('directory-school') === 'alpha' ? 'alpha' : 'woodside';
 
 let allFamilies = [];
 let familyGroups = {};
@@ -19,9 +32,10 @@ const modal = document.getElementById('family-modal');
 const modalBackdrop = document.getElementById('modal-backdrop');
 
 async function fetchSheet() {
+  const sheetId = SCHOOLS[currentSchool].sheetId;
   const urls = [
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`,
   ];
   for (const url of urls) {
     try {
@@ -538,6 +552,39 @@ document.addEventListener('keydown', (e) => {
       searchInput.blur();
     }
   }
+});
+
+function syncSchoolUI() {
+  const school = SCHOOLS[currentSchool];
+  document.getElementById('site-title').textContent = school.title;
+  document.title = school.title;
+  document.getElementById('sheet-link').href = school.sheetUrl;
+  document.querySelectorAll('.school-btn').forEach(b => b.classList.toggle('active', b.dataset.school === currentSchool));
+}
+
+function switchSchool(key) {
+  if (!SCHOOLS[key] || key === currentSchool) return;
+  currentSchool = key;
+  localStorage.setItem('directory-school', key);
+  searchInput.value = '';
+  searchTerm = '';
+  clearBtn.classList.remove('visible');
+  activeGrades.clear();
+  directoryEl.innerHTML = '';
+  resultsInfo.textContent = '';
+  resetBtn.classList.add('hidden');
+  copyEmailsBtn.classList.add('hidden');
+  closeModal();
+  errorEl.classList.add('hidden');
+  loadingEl.classList.remove('hidden');
+  syncSchoolUI();
+  syncSchoolUI();
+init();
+}
+
+document.querySelector('.school-bar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.school-btn');
+  if (btn) switchSchool(btn.dataset.school);
 });
 
 async function init() {

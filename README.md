@@ -1,6 +1,11 @@
-# Woodside Directory
+# School Directory
 
-A simple, fast school directory website powered by a Google Sheet.
+A simple, fast school directory website powered by Google Sheets.
+
+Two schools, one site: big **Woodside** and **Alpha** buttons at the top toggle between the two directories. The choice is remembered on the device.
+
+- **Woodside** — original directory sheet
+- **Alpha** — Alpha School Palo Alto 2026-27 roster (from the school's Family Roster email)
 
 ## Features
 

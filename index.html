@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1a1a1e">
   <title>Woodside Directory</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
@@ -13,8 +13,8 @@
 <body>
   <header>
     <div class="header-content">
-      <h1>Woodside Directory</h1>
-      <a href="https://docs.google.com/spreadsheets/d/1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg/edit?usp=sharing"
+      <h1 id="site-title">Woodside Directory</h1>
+      <a id="sheet-link" href="https://docs.google.com/spreadsheets/d/1D6MzGtBFOPTx6zjtFingE1CHmmVhGfl1OAmQoedXXMg/edit?usp=sharing"
          target="_blank" rel="noopener" class="sheet-link">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -25,6 +25,11 @@
       </a>
     </div>
   </header>
+
+  <div class="school-bar">
+    <button class="school-btn active" data-school="woodside">Woodside</button>
+    <button class="school-btn" data-school="alpha">Alpha</button>
+  </div>
 
   <main>
     <div class="search-container">
