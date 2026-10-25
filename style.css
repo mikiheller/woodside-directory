@@ -384,6 +384,10 @@ main {
 
 .student-status .grade-badge { margin-left: 0; }
 .grade-year { font-size: 0.68rem; color: var(--text-secondary); }
+.address-history { list-style: none; padding: 0; margin: 0; }
+.address-history li + li { margin-top: 12px; }
+.prior-address { font-size: 0.875rem; overflow-wrap: anywhere; }
+.address-history-year { margin-top: 3px; font-size: 0.75rem; color: var(--text-tertiary); }
 .status-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); }
 .historical { max-width: 160px; flex-shrink: 0; }
 .modal-kid { justify-content: space-between; }

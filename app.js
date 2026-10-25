@@ -110,6 +110,7 @@ function detectColumns(headers) {
     directoryYear: find('directoryyear'),
     directoryStatus: find('directorystatus'),
     gradeYear: find('gradeyear'),
+    priorAddresses: find('prioraddresses'),
     headers
   };
 }
@@ -135,6 +136,7 @@ function buildFamilies(rows, cols) {
       directoryYear: get(cols.directoryYear),
       directoryStatus: get(cols.directoryStatus),
       gradeYear: get(cols.gradeYear),
+      priorAddresses: parseAddressHistory(get(cols.priorAddresses)),
       _raw: row,
     };
   }).filter(f => f.studentFirst || f.studentLast);
@@ -148,6 +150,44 @@ function buildFamilyGroups(families) {
     groups[key].push(f);
   });
   return groups;
+}
+
+// One entry per line in the sheet: school year | address | parent (optional).
+function parseAddressHistory(value) {
+  return value.split(/\r?\n/).map(line => {
+    const parts = line.split('|').map(part => part.trim());
+    if (parts.length >= 2 && /^(\d{4}[-–]\d{4}|Year unknown)$/.test(parts[0])) {
+      return { year: parts[0].replace('–', '-'), address: parts[1], parent: parts[2] || '' };
+    }
+    return { year: '', address: line.trim(), parent: '' };
+  }).filter(entry => entry.address);
+}
+
+function addressKey(address) {
+  const abbreviations = { road: 'rd', drive: 'dr', lane: 'ln', avenue: 'ave', street: 'st', terrace: 'terr', court: 'ct', place: 'pl', boulevard: 'blvd', apartment: 'apt' };
+  return address.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean)
+    .map(word => abbreviations[word] || word).join(' ');
+}
+
+function familyRepresentative(siblings) {
+  return [...siblings].sort((a, b) => Number(isHistorical(a)) - Number(isHistorical(b)) ||
+    (b.gradeYear || '').localeCompare(a.gradeYear || ''))[0];
+}
+
+function renderAddressHistory(siblings, representative) {
+  const current = new Set([representative.address, representative.parent2Address].filter(Boolean).map(addressKey));
+  const entries = new Map();
+  siblings.forEach(sibling => (sibling.priorAddresses || []).forEach(entry => {
+    const key = `${addressKey(entry.address)}|${entry.year}|${entry.parent.toLowerCase()}`;
+    if (!current.has(addressKey(entry.address))) entries.set(key, entry);
+  }));
+  if (!entries.size) return '';
+  const items = [...entries.values()].sort((a, b) => b.year.localeCompare(a.year)).map(entry => {
+    const year = entry.year && entry.year !== 'Year unknown' ? `Last recorded in ${shortYear(entry.year)}` : 'School year unknown';
+    return `<li><div class="prior-address">${escapeHtml(entry.address)}</div><div class="address-history-year">${escapeHtml(year)}${entry.parent ? ` · ${escapeHtml(entry.parent)}` : ''}</div></li>`;
+  }).join('');
+  return `<div class="modal-section"><div class="modal-section-label">Prior addresses</div><ul class="address-history">${items}</ul></div>`;
 }
 
 function gradeOrder(g) {
@@ -444,7 +484,7 @@ function openFamilyModal(familyKey) {
   const siblings = familyGroups[familyKey];
   if (!siblings || !siblings.length) return;
 
-  const rep = siblings[0];
+  const rep = familyRepresentative(siblings);
   const lastName = rep.studentLast;
 
   let kidsHtml = siblings.map(s =>
@@ -495,6 +535,7 @@ function openFamilyModal(familyKey) {
     </div>
     ${addressHtml}
     ${renderHouseholdExtras(rep, '', true)}
+    ${renderAddressHistory(siblings, rep)}
   `;
 
   modal.classList.add('open');

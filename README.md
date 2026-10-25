@@ -16,6 +16,7 @@ Two schools, one site: big **Woodside** and **Alpha** buttons at the top toggle 
 - **Mobile friendly** — Works great on phones and tablets
 - **Google Sheet link** — Jump straight to the source spreadsheet
 - **Year and status** — Current grades are separate from retained historical records; all records remain searchable
+- **Prior addresses** — Family details show dated previous addresses alongside the current household addresses
 
 ## Setup
 
@@ -31,9 +32,13 @@ The app auto-detects columns. For best results, use headers like:
 
 The Woodside sheet also uses `Home phone`, `Parent 2 address`, `Directory source`, `Directory year`, `Directory status`, and `Grade year`.
 
+`Prior addresses` stores one entry per line: `2025-2026 | 123 Example Rd, Woodside, CA 94062`. An optional third field identifies a parent. Use `Year unknown` when the source does not establish the school year. Keep this family-level history on all sibling rows. The family view deduplicates repeated entries and excludes addresses still used by either parent. It selects the latest listed student as the representative for current contact details.
+
 `Directory status` is `Listed`, `Not listed` (not found in the supplied pages), or `Not reviewed` (pages not supplied). Absence from a directory does not establish withdrawal. Retain the last known `Grade` and its `Grade year`; only `Listed` records appear in current grade filters. Sheets without these extra columns retain the original behavior.
 
 For annual updates, back up the sheet, match existing student/family IDs, update only supplied nonempty fields, preserve manually added details and missing students, and record sources/previous values in cell notes. Do not infer grades or enrollment from omitted pages. Keep photos, transcriptions, backups, and import reports in the ignored `.private-import/` folder, outside Git and deployment files.
+
+Before replacing a household address, add its previous value and last evidenced school year to `Prior addresses`, retaining existing history. Do not record punctuation, accent, or street-abbreviation corrections as moves. An older directory can fill gaps and add missing students, but must not replace newer contact information or grades. Older students remain in their family group with their last recorded grade/year and a status based on the current directory.
 
 ## Deployment
 
