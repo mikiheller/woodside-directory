@@ -39,7 +39,7 @@ async function fetchSheet() {
   ];
   for (const url of urls) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       if (response.ok) return response.text();
     } catch (_) { /* try next */ }
   }
@@ -105,6 +105,11 @@ function detectColumns(headers) {
     parent2Email: find('parent2email', 'parent2e'),
     parent2Phone: find('parent2phone', 'parent2p', 'parent2cell'),
     address: find('address', 'street'),
+    homePhone: find('homephone'),
+    parent2Address: find('parent2address'),
+    directoryYear: find('directoryyear'),
+    directoryStatus: find('directorystatus'),
+    gradeYear: find('gradeyear'),
     headers
   };
 }
@@ -125,6 +130,11 @@ function buildFamilies(rows, cols) {
       parent2Email: get(cols.parent2Email),
       parent2Phone: get(cols.parent2Phone),
       address: get(cols.address),
+      homePhone: get(cols.homePhone),
+      parent2Address: get(cols.parent2Address),
+      directoryYear: get(cols.directoryYear),
+      directoryStatus: get(cols.directoryStatus),
+      gradeYear: get(cols.gradeYear),
       _raw: row,
     };
   }).filter(f => f.studentFirst || f.studentLast);
@@ -151,8 +161,30 @@ function gradeOrder(g) {
   return 100;
 }
 
+function isHistorical(family) {
+  return Boolean(family.directoryStatus && family.directoryStatus !== 'Listed');
+}
+
+function currentGrade(family) {
+  return isHistorical(family) ? '' : family.grade;
+}
+
+function shortYear(year) {
+  return year.replace(/^(\d{4})-(\d{2})(\d{2})$/, '$1–$3');
+}
+
+function renderGradeStatus(family) {
+  if (!isHistorical(family)) {
+    return `<div class="student-status">${family.grade ? `<span class="grade-badge">${escapeHtml(family.grade)}</span>` : ''}${family.gradeYear ? `<span class="grade-year">${escapeHtml(shortYear(family.gradeYear))}</span>` : ''}</div>`;
+  }
+  const status = family.directoryStatus === 'Not listed' ? 'Not listed' : 'Not reviewed';
+  const label = `${status} in ${shortYear(family.directoryYear)}`;
+  const previous = family.grade ? `Last recorded: ${family.grade}${family.gradeYear ? ` (${shortYear(family.gradeYear)})` : ''}` : '';
+  return `<div class="student-status historical"><span class="status-label">${escapeHtml(label)}</span><span class="grade-year">${escapeHtml(previous)}</span></div>`;
+}
+
 function getGrades(families) {
-  const grades = [...new Set(families.map(f => f.grade).filter(Boolean))];
+  const grades = [...new Set(families.map(currentGrade).filter(Boolean))];
   return grades.sort((a, b) => gradeOrder(a) - gradeOrder(b));
 }
 
@@ -165,12 +197,19 @@ function renderGradeButtons(grades) {
     btn.textContent = grade;
     gradeFilters.appendChild(btn);
   });
+  if (allFamilies.some(isHistorical)) {
+    const btn = document.createElement('button');
+    btn.className = 'grade-btn';
+    btn.dataset.grade = '__historical';
+    btn.textContent = 'Older records';
+    gradeFilters.appendChild(btn);
+  }
 }
 
 function highlightText(text, term) {
-  if (!term || !text) return text || '';
+  if (!term || !text) return escapeHtml(text || '');
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+  return text.split(new RegExp(`(${escaped})`, 'gi')).map((part, i) => i % 2 ? `<mark>${escapeHtml(part)}</mark>` : escapeHtml(part)).join('');
 }
 
 function matchesSearch(family, term) {
@@ -228,6 +267,20 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function renderHouseholdExtras(family, term = '', modalView = false) {
+  const section = modalView ? 'modal-section' : 'card-section';
+  const label = modalView ? 'modal-section-label' : 'card-section-label';
+  let html = '';
+  if (family.homePhone) {
+    html += `<div class="${section}"><div class="${label}">Home phone</div><a href="tel:${phoneDigits(family.homePhone)}">${highlightText(formatPhone(family.homePhone), term)}</a></div>`;
+  }
+  if (family.parent2Address && family.parent2Address !== family.address) {
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(family.parent2Address)}`;
+    html += `<div class="${section}"><div class="${label}">${escapeHtml(family.parent2Name || 'Parent 2')} · Address</div><div class="address"><a href="${mapsUrl}" target="_blank" rel="noopener">${highlightText(family.parent2Address, term)}</a></div></div>`;
+  }
+  return html;
+}
+
 function renderCard(family, term) {
   const hl = (t) => highlightText(t, term);
   const fullName = `${family.studentFirst} ${family.studentLast}`.trim();
@@ -275,24 +328,25 @@ function renderCard(family, term) {
           <span class="student-name">${hl(fullName)}</span>
           ${siblingHint}
         </div>
-        ${family.grade ? `<span class="grade-badge">${hl(family.grade)}</span>` : ''}
+        ${renderGradeStatus(family)}
       </div>
       ${parentsHtml ? `<div class="card-section"><div class="card-section-label">Parents</div>${parentsHtml}</div>` : ''}
       ${addressHtml}
+      ${renderHouseholdExtras(family, term)}
     </div>`;
 }
 
 function renderTable(filtered) {
   let html = '<table class="directory-table"><thead><tr>';
-  html += '<th>Student</th><th>Grade</th><th>Parent 1</th><th>Parent 1 Email</th><th>Parent 1 Phone</th>';
-  html += '<th>Parent 2</th><th>Parent 2 Email</th><th>Parent 2 Phone</th><th>Address</th>';
+  html += '<th>Student</th><th>Grade / status</th><th>Parent 1</th><th>Parent 1 Email</th><th>Parent 1 Phone</th>';
+  html += '<th>Parent 2</th><th>Parent 2 Email</th><th>Parent 2 Phone</th><th>Address</th><th>Home phone</th><th>Parent 2 address</th>';
   html += '</tr></thead><tbody>';
 
   filtered.forEach(f => {
     const fullName = `${f.studentFirst} ${f.studentLast}`.trim();
     html += `<tr data-family-key="${escapeHtml(f.familyId || `${f.parent1Name}_${f.studentLast}`)}" role="button">`;
     html += `<td>${escapeHtml(fullName)}</td>`;
-    html += `<td>${escapeHtml(f.grade)}</td>`;
+    html += `<td>${renderGradeStatus(f)}</td>`;
     html += `<td>${escapeHtml(f.parent1Name)}</td>`;
     html += `<td>${escapeHtml(f.parent1Email)}</td>`;
     html += `<td>${escapeHtml(formatPhone(f.parent1Phone))}</td>`;
@@ -300,6 +354,8 @@ function renderTable(filtered) {
     html += `<td>${escapeHtml(f.parent2Email)}</td>`;
     html += `<td>${escapeHtml(formatPhone(f.parent2Phone))}</td>`;
     html += `<td>${escapeHtml(f.address)}</td>`;
+    html += `<td>${escapeHtml(formatPhone(f.homePhone))}</td>`;
+    html += `<td>${escapeHtml(f.parent2Address)}</td>`;
     html += '</tr>';
   });
 
@@ -310,7 +366,7 @@ function renderTable(filtered) {
 function getFiltered() {
   let filtered = allFamilies;
   if (activeGrades.size > 0) {
-    filtered = filtered.filter(f => activeGrades.has(f.grade));
+    filtered = filtered.filter(f => isHistorical(f) ? activeGrades.has('__historical') : activeGrades.has(f.grade));
   }
   if (searchTerm) {
     filtered = filtered.filter(f => matchesSearch(f, searchTerm));
@@ -319,23 +375,30 @@ function getFiltered() {
 }
 
 function render() {
-  const filtered = getFiltered();
+  let filtered = getFiltered();
   const showGradeGroups = activeGrades.size === 0 && !searchTerm && currentView === 'cards';
 
   if (currentView === 'table') {
-    filtered.sort((a, b) => gradeOrder(a.grade || 'ZZZ') - gradeOrder(b.grade || 'ZZZ') || (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
+    filtered = [...filtered];
+    filtered.sort((a, b) => gradeOrder(currentGrade(a) || 'ZZZ') - gradeOrder(currentGrade(b) || 'ZZZ') || (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
     directoryEl.innerHTML = renderTable(filtered);
     directoryEl.className = 'directory table-view';
   } else if (showGradeGroups) {
     const grades = getGrades(filtered);
     let html = '';
     grades.forEach(grade => {
-      const inGrade = filtered.filter(f => f.grade === grade);
+      const inGrade = filtered.filter(f => currentGrade(f) === grade);
       inGrade.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
       html += `<div class="grade-group-header">${grade} <span class="count">${inGrade.length} student${inGrade.length !== 1 ? 's' : ''}</span></div>`;
       html += inGrade.map(f => renderCard(f, searchTerm)).join('');
     });
-    const noGrade = filtered.filter(f => !f.grade);
+    const historical = filtered.filter(isHistorical);
+    if (historical.length) {
+      historical.sort((a, b) => a.studentLast.localeCompare(b.studentLast) || a.studentFirst.localeCompare(b.studentFirst));
+      html += `<div class="grade-group-header">Older records <span class="count">${historical.length} retained</span></div>`;
+      html += historical.map(f => renderCard(f, searchTerm)).join('');
+    }
+    const noGrade = filtered.filter(f => !f.grade && !isHistorical(f));
     if (noGrade.length) {
       noGrade.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || ''));
       html += `<div class="grade-group-header">No Grade Listed <span class="count">${noGrade.length}</span></div>`;
@@ -344,6 +407,7 @@ function render() {
     directoryEl.innerHTML = html;
     directoryEl.className = 'directory cards-view';
   } else {
+    filtered = [...filtered];
     filtered.sort((a, b) => (a.studentLast || '').localeCompare(b.studentLast || '') || (a.studentFirst || '').localeCompare(b.studentFirst || ''));
     directoryEl.innerHTML = filtered.map(f => renderCard(f, searchTerm)).join('');
     directoryEl.className = 'directory cards-view';
@@ -351,8 +415,12 @@ function render() {
 
   const total = allFamilies.length;
   const shown = filtered.length;
+  const year = allFamilies.find(f => f.directoryYear)?.directoryYear;
+  const historicalCount = allFamilies.filter(isHistorical).length;
   if (searchTerm || activeGrades.size > 0) {
-    resultsInfo.textContent = `Showing ${shown} of ${total} students`;
+    resultsInfo.textContent = `${year ? shortYear(year) + ' · ' : ''}Showing ${shown} of ${total} records`;
+  } else if (year) {
+    resultsInfo.textContent = `${shortYear(year)} · ${total - historicalCount} listed students · ${historicalCount} older records retained`;
   } else {
     resultsInfo.textContent = `${total} students`;
   }
@@ -380,7 +448,7 @@ function openFamilyModal(familyKey) {
   const lastName = rep.studentLast;
 
   let kidsHtml = siblings.map(s =>
-    `<div class="modal-kid"><span class="modal-kid-name">${escapeHtml(s.studentFirst)} ${escapeHtml(s.studentLast)}</span><span class="grade-badge">${escapeHtml(s.grade)}</span></div>`
+    `<div class="modal-kid"><span class="modal-kid-name">${escapeHtml(s.studentFirst)} ${escapeHtml(s.studentLast)}</span>${renderGradeStatus(s)}</div>`
   ).join('');
 
   let parentsHtml = '';
@@ -426,6 +494,7 @@ function openFamilyModal(familyKey) {
       ${parentsHtml}
     </div>
     ${addressHtml}
+    ${renderHouseholdExtras(rep, '', true)}
   `;
 
   modal.classList.add('open');
@@ -578,8 +647,7 @@ function switchSchool(key) {
   errorEl.classList.add('hidden');
   loadingEl.classList.remove('hidden');
   syncSchoolUI();
-  syncSchoolUI();
-init();
+  init();
 }
 
 document.querySelector('.school-bar').addEventListener('click', (e) => {

@@ -373,6 +373,23 @@ main {
   border-top: 1px solid var(--border-light);
 }
 
+.student-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  margin-left: 12px;
+  text-align: right;
+}
+
+.student-status .grade-badge { margin-left: 0; }
+.grade-year { font-size: 0.68rem; color: var(--text-secondary); }
+.status-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); }
+.historical { max-width: 160px; flex-shrink: 0; }
+.modal-kid { justify-content: space-between; }
+.directory-table .student-status { margin-left: 0; align-items: flex-start; text-align: left; }
+.directory-table .historical { min-width: 150px; white-space: normal; }
+
 .card-section-label {
   font-size: 0.65rem;
   font-weight: 600;
